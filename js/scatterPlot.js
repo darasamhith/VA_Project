@@ -1,4 +1,4 @@
-class BarChart {
+class ScatterPlot {
     
     /**
      * class constructor with basic chart configuration
@@ -35,19 +35,16 @@ class BarChart {
         vis.chart = vis.svg.append('g')
             .attr('transform', `translate(${vis.config.margin.left},${vis.config.margin.top})`);
 
-        vis.xScale = d3.scaleBand()
-            .range([0, vis.width])
-            .paddingInner(0.2);
+        vis.xScale = d3.scaleLinear()
+            .range([0, vis.width]);
         
         vis.yScale = d3.scaleLinear()
-            .range([vis.height, 0]); 
+            .range([0, vis.height]); 
 
         vis.xAxis = d3.axisBottom(vis.xScale)
-            .tickSizeOuter(0);
+            .ticks((10 - d3.min(vis.data, d => d.critic_score)) / 0.1);
 
-        vis.yAxis = d3.axisLeft(vis.yScale)
-            .ticks(6)
-            .tickSizeOuter(0);
+        vis.yAxis = d3.axisLeft(vis.yScale);
 
         vis.xAxisG = vis.chart.append('g')
             .attr('class', 'axis x-axis')
@@ -56,11 +53,8 @@ class BarChart {
         vis.yAxisG = vis.chart.append('g')
             .attr('class', 'axis y-axis');
 
-        vis.svg.append('text')
-            .attr('class', 'axis-title')
-            .attr('x', 0)
-            .attr('y', 0)
-            .attr('dy', '.71em')
+        
+        vis.updateVis();
     }
 
     /**
@@ -70,8 +64,8 @@ class BarChart {
         let vis = this;
 
         // Todos
-        vis.xScale.domain(vis.data.map(d => d.console));
-        vis.yScale.domain([0, d3.max(vis.data, d => d.totalSales)]);
+        vis.xScale.domain(d3.extent(vis.data, d => d.critic_score));
+        vis.yScale.domain([d3.max(vis.data, d => d.total_sales), 0]);
 
         vis.renderVis();
     }
@@ -83,17 +77,19 @@ class BarChart {
         let vis = this;
 
         // Todos
-        let bars = vis.chart.selectAll('.bar')
-            .data(vis.data, d => d.console);
-
-        bars.enter().append('rect')
-            .attr('class', 'bar')
-            .merge(bars)
-            .attr('x', d => vis.xScale(d.console))
-            .attr('y', d => vis.yScale(d.totalSales))
-            .attr('width', vis.xScale.bandwidth())
-            .attr('height', d => vis.height - vis.yScale(d.totalSales))
-            .attr('fill', d => vis.colorScale(d.console));
+        let dots = vis.chart.selectAll('.dot')
+            .data(vis.data)
+            .enter()
+            .append('circle')
+            .attr('class', 'dot')
+            .attr('r', 3.5)
+            .attr('cx', d => vis.xScale(d.critic_score))
+            .attr('cy', d => {
+                const y = vis.yScale(d.total_sales);
+                return isNaN(y) ? 0 : y; // Prevent setting NaN
+              })
+            .style('fill', d => vis.colorScale(d.genre));
+        
 
         vis.xAxisG.call(vis.xAxis);
         vis.yAxisG.call(vis.yAxis);
